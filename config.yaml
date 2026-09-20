@@ -1,0 +1,63 @@
+# Degree Apprenticeship Tracker configuration.
+# Edit this file to change interests/scoring without touching Python code.
+
+location:
+  primary: London
+  allow_greater_london: true
+  # substrings (lowercased) that count as "London-based" for the location hard-check
+  london_terms:
+    - london
+    - greater london
+    - city of london
+    - "e1"
+    - canary wharf
+
+entry_year:
+  primary: 2027
+  also_capture: [2028]
+
+level:
+  minimum: 6
+
+subjects:
+  # highest -> lowest priority, used by scoring.py subject match
+  - computer science
+  - software engineering
+  - software development
+  - digital and technology solutions
+  - digital & technology solutions
+  - data science
+  - data engineering
+  - artificial intelligence
+  - machine learning
+  - cyber security
+  - computer engineering
+  - data engineering
+  - technology consulting
+  - digital technology
+  - systems engineering
+  - mathematical computing
+  - operational research
+
+interests:
+  sport: [sport, sports, rowing, football, formula 1, f1, olympic, performance analysis, performance analytics, sports analytics, sports technology, sports science]
+  crime: [crime, cyber crime, forensic, forensics, criminal investigation, intelligence, national security, police]
+  travel: [travel, aviation, airline, airport, transport, rail, logistics, route optimisation, route optimization]
+  government: [government, gchq, ncsc, home office, ministry of defence, ministry of justice, national crime agency, metropolitan police, cabinet office, government digital service]
+
+employers_seed:
+  # used by sources/employers.py as a starting list of employer career pages to check
+  # (JSON-LD JobPosting scraper - add more URLs here as you find them)
+  - name: "BT"
+    careers_url: "https://www.bt.com/careers/early-careers/apprenticeships"
+  - name: "Transport for London"
+    careers_url: "https://tfl.gov.uk/corporate/careers/early-careers/apprenticeships"
+
+minimum_score_for_emergency: 75
+
+email:
+  weekly_day: Monday
+
+rate_limit:
+  delay_seconds: 2.0
+  timeout_seconds: 20
