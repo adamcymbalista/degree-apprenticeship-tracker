@@ -1,9 +1,13 @@
-Add manual mode picker to the daily workflow
+Add manual mode picker to the daily workflow, make db-commit step resilient to races
 
 Lets "Run workflow" in the Actions tab choose daily / weekly / test-email
 instead of always running --daily, so the email/SMTP secrets can be
 verified with a real send without waiting for something to actually
 qualify for an alert.
+
+Also pulls before pushing in the "commit updated database" step, so a
+manual run overlapping the scheduled run (or a manual git push from a
+laptop) no longer fails with a rejected non-fast-forward push.
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_017DBdQkJwGf1sSVctJZkGXE

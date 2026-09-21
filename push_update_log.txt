@@ -1,20 +1,32 @@
 ===== git status (before) ===== 
 On branch main
-Your branch is up to date with 'origin/main'.
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
 
 Changes not staged for commit:
   (use "git add/rm <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
 	modified:   .github/workflows/daily_tracker.yml
-	deleted:    commit_msg.txt
-	modified:   push_log.txt
-
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-	commit_msg2.txt
-	push_update.bat
-	push_update_log.txt
+	deleted:    commit_msg2.txt
+	modified:   push_update_log.txt
 
 no changes added to commit (use "git add" and/or "git commit -a")
  
 ===== staging all changes ===== 
+warning: in the working copy of '.github/workflows/daily_tracker.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'push_update_log.txt', LF will be replaced by CRLF the next time Git touches it
+ 
+===== committing ===== 
+fatal: could not read log file 'commit_msg2.txt': No such file or directory
+ 
+===== pushing ===== 
+To https://github.com/adamcymbalista/degree-apprenticeship-tracker.git
+ ! [rejected]        main -> main (fetch first)
+error: failed to push some refs to 'https://github.com/adamcymbalista/degree-apprenticeship-tracker.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+ 
+===== DONE ===== 

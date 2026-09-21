@@ -1,0 +1,24 @@
+===== git status (before) ===== 
+On branch main
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   .github/workflows/daily_tracker.yml
+	deleted:    commit_msg2.txt
+	modified:   push_update_log.txt
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   push_update_log.txt
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	commit_msg3.txt
+	push_update2.bat
+	push_update2_log.txt
+
+ 
+===== staging all changes ===== 
