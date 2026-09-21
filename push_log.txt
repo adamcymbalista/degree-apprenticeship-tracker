@@ -28,3 +28,65 @@ no changes added to commit (use "git add" and/or "git commit -a")
 fatal: pathspec 'venv' did not match any files
  
 ===== staging all changes ===== 
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/http_client.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/main.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/sources/findapprenticeship.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'config.yaml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'commit_msg.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'diagnose.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'diagnose.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'push_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'push_to_github.bat', LF will be replaced by CRLF the next time Git touches it
+ 
+===== git status (after staging) ===== 
+On branch master
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   .gitignore
+	modified:   README.md
+	modified:   app/http_client.py
+	modified:   app/main.py
+	modified:   app/sources/findapprenticeship.py
+	new file:   commit_msg.txt
+	modified:   config.yaml
+	new file:   diagnose.bat
+	new file:   diagnose.py
+	new file:   diagnose_log.txt
+	new file:   diagnose_output.html
+	new file:   push_log.txt
+	new file:   push_to_github.bat
+	new file:   run_tracker.bat
+	new file:   tracker.db
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   push_log.txt
+
+ 
+===== committing ===== 
+[master 7cb89a8] Fix live scraping bugs found during verification
+ 15 files changed, 1343 insertions(+), 43 deletions(-)
+ create mode 100644 commit_msg.txt
+ create mode 100644 diagnose.bat
+ create mode 100644 diagnose.py
+ create mode 100644 diagnose_log.txt
+ create mode 100644 diagnose_output.html
+ create mode 100644 push_log.txt
+ create mode 100644 push_to_github.bat
+ create mode 100644 run_tracker.bat
+ create mode 100644 tracker.db
+ 
+===== setting remote ===== 
+error: No such remote: 'origin'
+ 
+===== renaming branch to main ===== 
+ 
+===== pushing (a browser window may open asking you to sign in to GitHub - sign in there if it does) ===== 
+To https://github.com/adamcymbalista/degree-apprenticeship-tracker.git
+ * [new branch]      main -> main
+branch 'main' set up to track 'origin/main'.
+ 
+===== DONE ===== 

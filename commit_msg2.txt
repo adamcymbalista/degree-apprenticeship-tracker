@@ -1,0 +1,9 @@
+Add manual mode picker to the daily workflow
+
+Lets "Run workflow" in the Actions tab choose daily / weekly / test-email
+instead of always running --daily, so the email/SMTP secrets can be
+verified with a real send without waiting for something to actually
+qualify for an alert.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017DBdQkJwGf1sSVctJZkGXE
