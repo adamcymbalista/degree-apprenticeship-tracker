@@ -23,9 +23,22 @@ def _robots_for(url: str) -> urllib.robotparser.RobotFileParser:
     if origin not in _robots_cache:
         rp = urllib.robotparser.RobotFileParser()
         rp.set_url(origin + "/robots.txt")
+        # Deliberately NOT using rp.read(): it fetches with urllib's default
+        # "Python-urllib/x.y" User-Agent, which several UK gov/enterprise WAFs
+        # 403 outright - and robotparser treats a 401/403 on robots.txt itself
+        # as "disallow everything", silently blocking a site that in fact has
+        # no robots restrictions at all. Fetch it ourselves with our real
+        # User-Agent instead, so a 403 there reflects the site's actual bot
+        # policy rather than an artifact of the stdlib fetcher.
         try:
-            rp.read()
-        except Exception:  # robots.txt missing/unreachable -> assume allowed
+            resp = requests.get(origin + "/robots.txt", headers={"User-Agent": USER_AGENT}, timeout=10)
+            if resp.status_code == 200:
+                rp.parse(resp.text.splitlines())
+            else:
+                # 404/403/anything else on robots.txt itself: no enforceable
+                # restrictions found, so don't block the real request over it.
+                rp.allow_all = True
+        except requests.RequestException:
             rp.allow_all = True
         _robots_cache[origin] = rp
     return _robots_cache[origin]

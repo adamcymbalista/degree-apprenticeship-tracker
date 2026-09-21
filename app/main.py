@@ -40,19 +40,26 @@ def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def fetch_all_sources(config: dict) -> tuple[list, list[dict]]:
-    """Runs every source module; one source failing never aborts the others."""
+def fetch_all_sources(config: dict) -> tuple[list, list[dict], list[dict]]:
+    """Runs every source module; one source failing never aborts the others.
+    Returns (vacancies, errors, source_results) - source_results records a
+    success/failure per source regardless of whether it raised, so the
+    `sources` table (last_run_at/last_success_at/last_error) stays accurate.
+    """
     all_vacancies = []
     errors: list[dict] = []
+    source_results: list[dict] = []
     for name, fetch_fn in SOURCE_MODULES:
         try:
             results = fetch_fn(config)
             logger.info("%s: %d results", name, len(results))
             all_vacancies.extend(results)
+            source_results.append({"name": name, "success": True, "error": None})
         except Exception as exc:  # a source crashing must never crash the whole run
             logger.error("%s: source failed: %s", name, exc)
             errors.append({"source": name, "error": str(exc)})
-    return all_vacancies, errors
+            source_results.append({"name": name, "success": False, "error": str(exc)})
+    return all_vacancies, errors, source_results
 
 
 def process(config: dict, raw_vacancies: list) -> list:
@@ -67,7 +74,7 @@ def process(config: dict, raw_vacancies: list) -> list:
 
 
 def cmd_dry_run(config: dict) -> None:
-    raw, errors = fetch_all_sources(config)
+    raw, errors, _source_results = fetch_all_sources(config)
     vacancies = process(config, raw)
 
     print(f"\nFetched {len(raw)} raw listings, {len(vacancies)} after deduplication.")
@@ -161,11 +168,14 @@ def cmd_daily(config: dict) -> None:
     started_at = _utcnow()
     logger.info("Starting scan")
 
-    raw, errors = fetch_all_sources(config)
+    raw, errors, source_results = fetch_all_sources(config)
     vacancies = process(config, raw)
     logger.info("Total after dedup: %d", len(vacancies))
 
     with db.get_connection(DB_PATH) as conn:
+        for result in source_results:
+            db.record_source_result(conn, result["name"], result["success"], result["error"])
+
         first_run = db.is_first_run(conn)
         scanned: list[tuple] = []
         new_count = 0

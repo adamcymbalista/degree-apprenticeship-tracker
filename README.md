@@ -181,14 +181,14 @@ need a bespoke parser (a new source module) for that employer.
   employer/training provider, or self-registering for a Display-Advert-only
   key, neither of which this tool can do on your behalf. The scraper in
   `app/sources/findapprenticeship.py` uses the public search HTML instead,
-  anchored on the stable `/apprenticeship/reference/<id>` URL pattern rather
-  than CSS classes so it degrades gracefully (skips one bad listing, never
-  crashes) if the site's markup changes. It was built and unit-tested
-  against a fixture based on the site's documented field layout - **run
-  `--dry-run` for real once you have normal internet access** (this was
-  built in a sandboxed environment whose network policy blocks direct
-  HTTPS to arbitrary domains) and skim the output; if a field looks off,
-  the regexes/selectors to adjust are all in that one file.
+  anchored on the stable `/apprenticeship/VAC<id>` URL pattern rather than
+  CSS classes so it degrades gracefully (skips one bad listing, never
+  crashes) if the site's markup changes. **Verified against the live site**
+  (not just a fixture): correctly pulls title, employer, location, level,
+  wage, dates and a real vacancy count (149 stored on a live test run).
+  The site's own search box does exact-phrase matching, not topic search -
+  `config.yaml`'s `subjects` list is deliberately short, broad, single
+  words for that reason (see the comment there).
 - **SQLite-in-repo persistence**: GitHub Actions runners are ephemeral, so
   the workflow commits `tracker.db` back to the repo after every run. This
   is the simplest reliable option for a first version, but it means every

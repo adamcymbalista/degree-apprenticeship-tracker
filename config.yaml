@@ -20,24 +20,22 @@ level:
   minimum: 6
 
 subjects:
-  # highest -> lowest priority, used by scoring.py subject match
-  - computer science
-  - software engineering
-  - software development
-  - digital and technology solutions
-  - digital & technology solutions
-  - data science
-  - data engineering
-  - artificial intelligence
-  - machine learning
-  - cyber security
-  - computer engineering
-  - data engineering
-  - technology consulting
-  - digital technology
-  - systems engineering
-  - mathematical computing
-  - operational research
+  # Search terms sent to findapprenticeship.service.gov.uk's "What" box
+  # (app/sources/findapprenticeship.py). That site matches search terms as an
+  # exact phrase, not a topic/semantic search - multi-word phrases like
+  # "computer science" or "software engineering" return 0 results even
+  # though relevant listings exist (confirmed live: "computer science" = 0,
+  # "software engineer" = 0, but "software" = 22, "engineering" = 109).
+  # Keep this list short, broad, single words - real subject/relevance
+  # filtering happens afterwards in app/scoring.py, not here.
+  - software
+  - data
+  - cyber
+  - computer
+  - digital
+  - engineering
+  - technology
+  - security
 
 interests:
   sport: [sport, sports, rowing, football, formula 1, f1, olympic, performance analysis, performance analytics, sports analytics, sports technology, sports science]

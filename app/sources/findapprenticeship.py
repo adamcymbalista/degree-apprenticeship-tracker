@@ -10,8 +10,11 @@ structure"):
   - We do NOT depend on CSS class names, which GOV.UK/DfE change more often
     than the page layout. Instead we anchor on the one thing that's part of
     the site's URL contract: result links matching
-    /apprenticeship/reference/<digits>. Everything else is extracted by
-    regex over the surrounding block's *text*, matching the field labels
+    /apprenticeship/VAC<digits> (confirmed against the live site's raw HTML -
+    an earlier guess of /apprenticeship/reference/<digits> turned out to be
+    wrong and silently found 0 listings; verified this one directly).
+    Everything else is extracted by regex over the surrounding block's *text*,
+    matching the field labels
     ("Training course:", "Wage:", "Closes"/"Closing date", "Start date",
     "Posted") that the service displays to end users - those change far less
     often than markup, and a label rename just means one listing fails to
@@ -34,13 +37,15 @@ logger = logging.getLogger("tracker.sources.findapprenticeship")
 
 BASE_URL = "https://www.findapprenticeship.service.gov.uk"
 SEARCH_PATH = "/apprenticeships"
-REFERENCE_RE = re.compile(r"/apprenticeship/reference/(\d+)")
+REFERENCE_RE = re.compile(r"/apprenticeship/(VAC\d+)", re.IGNORECASE)
 
 LEVEL_RE = re.compile(r"level\s*(\d)", re.IGNORECASE)
 WAGE_RE = re.compile(r"£[\d,]+(?:\.\d+)?\s*(?:a year|per year|an hour|per hour|a week)?", re.IGNORECASE)
 DATE_RE = re.compile(r"(\d{1,2}\s+\w+\s+\d{4})")
 TRAINING_COURSE_RE = re.compile(r"training course:?\s*(.+)$", re.IGNORECASE)
-LOCATION_LINE_RE = re.compile(r"^[A-Za-z .'-]+\([A-Za-z0-9 ]+\)$")
+# Addresses often have commas and building numbers ("e-Innovation Centre,
+# University of Wolverhampton, Telford (TF2 9FT)") - allow those too.
+LOCATION_LINE_RE = re.compile(r"^[A-Za-z0-9 .,'-]+\([A-Za-z0-9 ]+\)$")
 LABEL_PREFIXES = ("distance", "start date", "training course", "wage", "clos", "posted")
 MAX_PAGES = 15  # safety cap so a malformed "results found" count can't loop forever
 
@@ -74,19 +79,27 @@ def _parse_uk_date(text: str | None) -> date | None:
 def _block_lines(anchor) -> list[str]:
     """Walk up from the reference link to the smallest ancestor block that
     contains this result's field labels, so we don't pull in neighbouring
-    listings' text, then return its text as one line per child element
-    (using "\n" as the get_text separator keeps <p>/<li> boundaries intact,
-    which is what lets us tell "employer" and "location" apart positionally).
+    listings' text, then return one "line" per <p>/<h2> in that block, in
+    document order.
+
+    We deliberately do NOT flatten the whole block with a "\n" separator:
+    the live site wraps each field label in its own inline tag
+    (<p><b>Start date</b> 1 September 2027</p>), and a blanket separator
+    would split "Start date" and its value onto two different lines. Using
+    find_all(["p", "h2"]) and space-joining each element's own text keeps a
+    label and its value together while still keeping different fields on
+    different lines.
     """
     node = anchor
     for _ in range(6):
         if node.parent is None:
             break
         node = node.parent
-        text = node.get_text("\n", strip=True)
+        text = node.get_text(" ", strip=True)
         if "Distance" in text or "Wage" in text or "Training course" in text:
-            return [line.strip() for line in text.split("\n") if line.strip()]
-    return [line.strip() for line in node.get_text("\n", strip=True).split("\n") if line.strip()]
+            break
+    lines = [el.get_text(" ", strip=True) for el in node.find_all(["p", "h2"])]
+    return [line for line in lines if line]
 
 
 def _parse_listing(anchor, base_url: str) -> Vacancy | None:

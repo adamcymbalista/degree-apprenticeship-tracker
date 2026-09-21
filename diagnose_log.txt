@@ -1,0 +1,15 @@
+=== via app.http_client.get() (what the real scraper uses) ===
+status: 200
+final url: https://www.findapprenticeship.service.gov.uk/apprenticeships?searchTerm=software&location=London&distance=all&sort=AgeDesc&pageNumber=1
+content length: 74564
+contains 'results found': True
+contains '/apprenticeship/reference/': False
+count of reference matches: 0
+saved full HTML to diagnose_output.html
+
+=== via plain requests (no robots check, no rate limit) ===
+status: 200
+final url: https://www.findapprenticeship.service.gov.uk/apprenticeships?searchTerm=software&location=London&distance=all&sort=AgeDesc&pageNumber=1
+content length: 74564
+contains 'results found': True
+contains '/apprenticeship/reference/': False
