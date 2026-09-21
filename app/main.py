@@ -16,7 +16,7 @@ from datetime import date, datetime, timezone
 from app import alerts, database as db, deduplication, email as email_mod, normalizer, scoring
 from app.config import load_config
 from app.models import MatchCategory, VacancyStatus
-from app.sources import employers, findapprenticeship, qmul, ucas
+from app.sources import apprentifinder, employers, findapprenticeship, qmul, ucas
 from app.status import just_opened
 
 logging.basicConfig(
@@ -30,6 +30,7 @@ DB_PATH = os.environ.get("TRACKER_DB_PATH", os.path.join(os.path.dirname(os.path
 
 SOURCE_MODULES = [
     ("findapprenticeship", findapprenticeship.fetch),
+    ("apprentifinder", apprentifinder.fetch),
     ("ucas", ucas.fetch),
     ("employers", employers.fetch),
     ("qmul", qmul.fetch),

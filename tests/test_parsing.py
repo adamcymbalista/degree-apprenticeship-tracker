@@ -28,12 +28,18 @@ class TestFindApprenticeshipParsing(unittest.TestCase):
         self.assertEqual(v.salary, "£24,000 a year")
         self.assertEqual(v.start_date, "1 September 2027")
         self.assertEqual(v.application_deadline, "19 October 2026")
-        self.assertEqual(v.source_id, "2000099001")
-        self.assertEqual(v.url, f"{BASE_URL}/apprenticeship/reference/2000099001")
+        self.assertEqual(v.source_id, "VAC2000099001")
+        self.assertEqual(v.url, f"{BASE_URL}/apprenticeship/VAC2000099001")
 
     def test_parses_level_3_listing_as_level_3_not_invented_as_6(self):
         v = _parse_listing(self.anchors[1], BASE_URL)
         self.assertEqual(v.level, 3)
+
+    def test_location_with_commas_and_building_name_still_parsed(self):
+        # real-world address format confirmed against the live site's HTML
+        v = _parse_listing(self.anchors[1], BASE_URL)
+        self.assertEqual(v.location, "e-Innovation Centre, University of Wolverhampton, Telford (TF2 9FT)")
+        self.assertEqual(v.employer, "Countyshire Council")
 
     def test_sport_data_listing_location_outside_central_london_still_captured(self):
         v = _parse_listing(self.anchors[2], BASE_URL)
@@ -44,7 +50,7 @@ class TestFindApprenticeshipParsing(unittest.TestCase):
         v = _parse_listing(self.anchors[0], BASE_URL)
         self.assertEqual(v.status, VacancyStatus.OPEN)
         self.assertIsNotNone(v.status_evidence)
-        self.assertIn("2000099001", v.status_evidence)
+        self.assertIn("VAC2000099001", v.status_evidence)
 
     def test_malformed_anchor_without_reference_id_ignored(self):
         soup = BeautifulSoup('<a href="/apprenticeships?pageNumber=2">Next</a>', "html.parser")

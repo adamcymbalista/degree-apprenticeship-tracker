@@ -173,6 +173,11 @@ def score_vacancy(v: Vacancy, config: dict) -> Vacancy:
         score += 5
         reasons.append("Strong technical degree content (+5).")
 
+    if _any_term(haystack, ["queen mary", "qmul"]):
+        score += 5
+        reasons.append("Partnered with Queen Mary University of London, which you specifically rate (+5).")
+        tags.add("QMUL_PARTNER")
+
     if "government" in haystack or _any_term(haystack, ["gchq", "ncsc", "home office", "ministry of defence",
                                                           "ministry of justice", "national crime agency",
                                                           "metropolitan police"]):

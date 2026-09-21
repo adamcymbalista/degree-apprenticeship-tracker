@@ -13,11 +13,14 @@ everything about that profile lives in `config.yaml`, not in code.
 ## What it does, and doesn't, do
 
 It currently scrapes **findapprenticeship.service.gov.uk** (the official DfE
-service) reliably, and any employer/university careers page that publishes
-schema.org `JobPosting` structured data (most large ATSs do - Workday,
-SuccessFactors, Greenhouse, etc.). UCAS's apprenticeship search is a
-client-side app with no public API, so that source is a documented no-op
-rather than a fake scraper - see **Known limitations** below.
+service) reliably, **apprentifinder.co.uk** (a third-party aggregator that
+pulls listings from many employer/university sites, so it isn't limited to
+whatever an employer chooses to advertise on the government site), and any
+employer/university careers page that publishes schema.org `JobPosting`
+structured data (most large ATSs do - Workday, SuccessFactors, Greenhouse,
+etc.). UCAS's apprenticeship search is a client-side app with no public
+API, so that source is a documented no-op rather than a fake scraper - see
+**Known limitations** below.
 
 Status is only ever reported as `OPEN` when a source gave real evidence for
 it (an active listing, a JobPosting's presence, explicit dates) - never
@@ -37,8 +40,11 @@ override everything else:
 Above that: +25 London, +20 Level 6, +15 starts 2027, +15 CS/software
 subject, +10 programming content, +10 data/AI/cyber, +8 algorithms, +8 each
 for a *technical* combination with sport/crime-security/transport, +5 maths
-modelling, +5 Python, +5 strong technical degree content. Penalties: -50
-wrong start year, -30 IT support / business-HR-marketing / pure finance.
+modelling, +5 Python, +5 strong technical degree content, +5 partnered with
+Queen Mary University of London (a training provider you specifically
+rate - see `app/sources/apprentifinder.py`, the only source that currently
+surfaces a training provider's name). Penalties: -50 wrong start year, -30
+IT support / business-HR-marketing / pure finance.
 
 Scores map to `MATCH_CATEGORY`: EXCEPTIONAL_MATCH (≥85), STRONG_MATCH (≥70),
 GOOD_MATCH (≥50), POSSIBLE_MATCH (≥25), LOW_MATCH, or EXCLUDED. Change any
@@ -96,7 +102,7 @@ with `TRACKER_DB_PATH`. Config path defaults to `config.yaml`; override with
 python -m unittest discover -s tests
 ```
 
-45 tests, all offline (fixtures + mocked HTTP, no live requests). `pytest`
+55 tests, all offline (fixtures + mocked HTTP, no live requests). `pytest`
 also works if you have it installed (`pytest tests/`) - the tests are plain
 `unittest.TestCase`s, which pytest runs natively.
 
@@ -171,11 +177,28 @@ need a bespoke parser (a new source module) for that employer.
   Apprenticeship already carries the same official vacancies.
 - **Employer/university pages** only work when the page publishes schema.org
   `JobPosting` structured data. Several career pages guessed for the seed
-  list (BT, TfL, QMUL, Greenwich, Open University) returned 404s or
-  unknown structure when last checked - **verify and fix these URLs before
-  relying on them** (`config.yaml` → `employers_seed`, and
-  `app/sources/qmul.py` → `UNIVERSITY_PAGES`). They're wired up and will
-  silently log "no results" rather than break anything if left as-is.
+  list (BT, TfL, Greenwich, Open University) returned 404s or unknown
+  structure when last checked - **verify and fix these URLs before relying
+  on them** (`config.yaml` → `employers_seed`, and `app/sources/qmul.py` →
+  `UNIVERSITY_PAGES`). They're wired up and will silently log "no results"
+  rather than break anything if left as-is. QMUL's URL has been checked
+  and corrected (`qmul.ac.uk/degreeapprenticeships/`), but it's structurally
+  a course-info page, not a vacancy feed - there's nothing there to scrape
+  regardless of URL. QMUL doesn't publish its own vacancies; its partner
+  employers do, elsewhere, with QMUL named only as training provider. That
+  name isn't exposed in findapprenticeship's search results (confirmed
+  live - a "queen mary" search there returns 0 results), so the practical
+  way this project surfaces QMUL-partnered roles is `apprentifinder.py`
+  below, whose feed includes a training-provider field per listing.
+- **apprentifinder.co.uk**, added to widen coverage beyond whatever an
+  employer chooses to advertise on the government site. Its `/browse` page
+  is a client-rendered app like UCAS, but (confirmed live, 2026-09-21) it
+  calls a plain, unauthenticated JSON endpoint - `/api/opportunities` - to
+  populate itself, which `app/sources/apprentifinder.py` reads instead of
+  the HTML; `robots.txt` there is `Allow: /` for everything. That endpoint
+  doesn't include a direct employer "apply" link, so each vacancy's `url`
+  points at ApprentiFinder's own detail view instead, which does show a
+  real "Apply on company site" link when opened.
 - **findapprenticeship.service.gov.uk has no public read API.** DfE's
   Recruitment/Display Advert APIs exist but require registering as an
   employer/training provider, or self-registering for a Display-Advert-only

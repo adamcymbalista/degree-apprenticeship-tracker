@@ -88,6 +88,12 @@ class TestScoring(unittest.TestCase):
         )
         self.assertNotIn("SPORT", v.tags)
 
+    def test_qmul_partner_scores_higher_than_otherwise_identical_role(self):
+        plain = score_vacancy(make_vacancy(), SAMPLE_CONFIG)
+        qmul = score_vacancy(make_vacancy(degree="Queen Mary University of London"), SAMPLE_CONFIG)
+        self.assertGreater(qmul.score, plain.score)
+        self.assertIn("QMUL_PARTNER", qmul.tags)
+
     def test_hard_exclusion_overrides_positive_signals(self):
         v = score_vacancy(
             make_vacancy(
