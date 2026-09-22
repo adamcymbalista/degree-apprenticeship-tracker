@@ -4,7 +4,9 @@ Scans UK degree apprenticeship sources once a day, scores every vacancy
 against your interests, stores everything in SQLite, and emails you:
 
 - a **weekly digest** (new/opened/closing-soon opportunities), and
-- an **emergency alert** the same day a high-match (score ≥ 75) vacancy opens.
+- an **emergency alert** the same day a high-match vacancy opens (score
+  threshold is configurable - `minimum_score_for_emergency` in
+  `config.yaml`, currently 60).
 
 Built for one specific profile (London, Level 6, September 2027, CS/software/
 data/cyber, with bonus interest in sport/crime/security/transport tech) but

@@ -51,7 +51,7 @@ employers_seed:
   - name: "Transport for London"
     careers_url: "https://tfl.gov.uk/corporate/careers/early-careers/apprenticeships"
 
-minimum_score_for_emergency: 75
+minimum_score_for_emergency: 60
 
 email:
   weekly_day: Monday

@@ -35,7 +35,7 @@ def select_emergency_candidates(
     email: opened today (brand new-and-open, or transitioned to OPEN) and
     score >= minimum_score_for_emergency.
     """
-    min_score = config.get("minimum_score_for_emergency", 75)
+    min_score = config.get("minimum_score_for_emergency", 60)
     out = []
     for v, prev_status in scanned:
         if v.match_category == MatchCategory.EXCLUDED:
