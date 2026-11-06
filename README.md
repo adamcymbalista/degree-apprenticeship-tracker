@@ -1,231 +1,185 @@
 # Degree Apprenticeship Tracker
 
-Scans UK degree apprenticeship sources once a day, scores every vacancy
-against your interests, stores everything in SQLite, and emails you:
+A Python tool that checks UK degree apprenticeship listings every day, scores
+each one against a personal profile, remembers what it has seen in SQLite, and
+emails me when something relevant opens.
 
-- a **weekly digest** (new/opened/closing-soon opportunities), and
-- an **emergency alert** the same day a high-match vacancy opens (score
-  threshold is configurable - `minimum_score_for_emergency` in
-  `config.yaml`, currently 60).
+I'm a Year 12 A-level student (Maths, Further Maths, Computer Science)
+applying for September 2027 degree apprenticeships in London. Good listings
+open and close within weeks and are spread across several sites, so I built
+something to watch them for me.
 
-Built for one specific profile (London, Level 6, September 2027, CS/software/
-data/cyber, with bonus interest in sport/crime/security/transport tech) but
-everything about that profile lives in `config.yaml`, not in code.
+- **Weekly digest** (Mondays): new listings, newly opened applications,
+  deadlines coming up, and high-match roles still open.
+- **Emergency alert**: sent the same day a high-match vacancy opens. The score
+  threshold is `minimum_score_for_emergency` in `config.yaml` (currently 60).
 
-## What it does, and doesn't, do
+It runs unattended on GitHub Actions at 07:17 UTC every day.
 
-It currently scrapes **findapprenticeship.service.gov.uk** (the official DfE
-service) reliably, **apprentifinder.co.uk** (a third-party aggregator that
-pulls listings from many employer/university sites, so it isn't limited to
-whatever an employer chooses to advertise on the government site), and any
-employer/university careers page that publishes schema.org `JobPosting`
-structured data (most large ATSs do - Workday, SuccessFactors, Greenhouse,
-etc.). UCAS's apprenticeship search is a client-side app with no public
-API, so that source is a documented no-op rather than a fake scraper - see
-**Known limitations** below.
+## How it works
 
-Status is only ever reported as `OPEN` when a source gave real evidence for
-it (an active listing, a JobPosting's presence, explicit dates) - never
-guessed from "the page exists". Nothing is invented: a field a source
-doesn't provide is stored as `None`/"Unknown".
+```
+fetch sources -> normalise -> deduplicate -> score -> compare with DB
+      -> detect new / newly opened / changed -> store -> send emails
+```
 
-## How scoring works
+| Source | How | Status |
+|---|---|---|
+| Find an Apprenticeship (gov.uk) | HTML scrape, anchored on the stable `/apprenticeship/VAC<id>` URL pattern rather than CSS classes | Working |
+| ApprentiFinder | Public JSON endpoint its own site uses (`/api/opportunities`); `robots.txt` allows it | Working |
+| Employer / university careers pages | Generic scraper for schema.org `JobPosting` data | Working in principle; several seed URLs are dead or bot-blocked (see limitations) |
+| UCAS | Client-rendered app with no public API | Deliberately a no-op, not faked |
 
-`app/scoring.py` is a plain, transparent point system (0-100), not an AI
-judgement - every point added or removed is recorded in `score_reasons` so
-the weekly email can explain *why* something scored well. Two hard rules
-override everything else:
+Design rules I held it to:
 
-- **not London** → score forced to -100 (`MATCH_CATEGORY = EXCLUDED`)
-- **below Level 6** → score forced to -100 (`EXCLUDED`)
+- **Never invent data.** A field a source doesn't provide is stored as unknown.
+  A vacancy is only `OPEN` when the source gave real evidence (an active
+  listing, explicit dates), never because "the page exists".
+- **One failing source never stops the run.** Failures are logged and the rest
+  carry on.
+- **Be a polite client.** Real User-Agent, per-host rate limiting, `robots.txt`
+  respected, back-off on HTTP 429, no CAPTCHA or login bypassing.
+- **No duplicate alerts.** Alert history lives in the database, and the first
+  run only builds a baseline instead of emailing about everything already open.
 
-Above that: +25 London, +20 Level 6, +15 starts 2027, +15 CS/software
-subject, +10 programming content, +10 data/AI/cyber, +8 algorithms, +8 each
-for a *technical* combination with sport/crime-security/transport, +5 maths
-modelling, +5 Python, +5 strong technical degree content, +5 partnered with
-Queen Mary University of London (a training provider you specifically
-rate - see `app/sources/apprentifinder.py`, the only source that currently
-surfaces a training provider's name). Penalties: -50 wrong start year, -30
-IT support / business-HR-marketing / pure finance.
+## Scoring
 
-Scores map to `MATCH_CATEGORY`: EXCEPTIONAL_MATCH (≥85), STRONG_MATCH (≥70),
-GOOD_MATCH (≥50), POSSIBLE_MATCH (≥25), LOW_MATCH, or EXCLUDED. Change any
-weight in `app/scoring.py` - it's one function, `score_vacancy`.
+`app/scoring.py` is a plain, transparent 0-100 point system. It is not an AI
+judgement. Every point added or removed is recorded in `score_reasons`, which
+is how the emails explain *why* something matched.
 
-## Install locally
+Two hard exclusions override everything else (score forced to -100,
+`EXCLUDED`):
+
+- not London-based
+- below Level 6
+
+Otherwise: +25 London, +20 Level 6, +15 starts 2027, +15 CS/software subject,
++10 programming, +10 data/AI/cyber, +8 algorithms/optimisation, +8 each for a
+*technical* role combined with sport, crime/security or transport, +5
+mathematical modelling, +5 Python, +5 strong technical degree content, +5
+partnered with Queen Mary University of London. Penalties: -50 wrong start
+year, -30 for IT support, business/HR/marketing or pure finance roles.
+
+Interest combinations only count when the vacancy has real technical content
+alongside them. A generic admin job at an airline is not "computer science +
+aviation".
+
+Scores map to `EXCEPTIONAL_MATCH` (85+), `STRONG_MATCH` (70+), `GOOD_MATCH`
+(50+), `POSSIBLE_MATCH` (25+), `LOW_MATCH`, or `EXCLUDED`.
+
+## Project layout
+
+```
+app/
+  main.py            CLI entrypoint and orchestration
+  models.py          Vacancy dataclass, status and match-category enums
+  database.py        SQLite schema and queries
+  scoring.py         Transparent scoring and tagging
+  deduplication.py   Fuzzy cross-source matching
+  status.py          Status transitions (closed -> open, etc.)
+  alerts.py          Emergency selection and weekly grouping
+  email.py           SMTP + HTML email rendering
+  http_client.py     Rate limiting, robots.txt, retries
+  sources/           One module per source, each returning Vacancy objects
+tests/               55 offline tests (fixtures, no live requests)
+config.yaml          Interests, London terms, entry year, thresholds
+.github/workflows/   Daily scheduled run
+```
+
+## Run it locally
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/adamcymbalista/degree-apprenticeship-tracker.git
 cd degree-apprenticeship-tracker
-pip install -r requirements.txt
+pip install -r requirements.txt          # Python 3.10+
+
+python -m app.main --dry-run      # fetch + score, print top matches, write nothing
+python -m app.main --test-email   # check your SMTP settings
+python -m app.main --daily        # the real scan
+python -m app.main --weekly       # force-send the weekly digest
 ```
 
-Requires Python 3.10+.
+Email uses SMTP via environment variables, never `config.yaml`:
+`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USERNAME`, `EMAIL_PASSWORD`, `EMAIL_FROM`,
+`EMAIL_TO`. For Gmail, use an App Password (needs 2-Step Verification on).
 
-## Configure email
-
-Uses SMTP via environment variables (never put credentials in `config.yaml`
-or commit them):
-
-```bash
-export EMAIL_HOST=smtp.gmail.com
-export EMAIL_PORT=587
-export EMAIL_USERNAME=you@gmail.com
-export EMAIL_PASSWORD=your-gmail-app-password   # not your normal password - see below
-export EMAIL_FROM=you@gmail.com
-export EMAIL_TO=you@gmail.com
-```
-
-For Gmail: enable 2-Step Verification, then create an **App Password**
-(Google Account → Security → App passwords) and use that as
-`EMAIL_PASSWORD`. Any other STARTTLS SMTP provider works by changing
-`EMAIL_HOST`/`EMAIL_PORT`.
-
-## Run it
-
-```bash
-python -m app.main --dry-run      # fetch + score, print top matches, write NOTHING
-python -m app.main --test-email   # send yourself a test email to check SMTP config
-python -m app.main --daily        # the real daily scan: detect changes, maybe send emergency email
-python -m app.main --weekly       # force-send the weekly digest right now
-```
-
-First `--daily` run populates the database as a baseline and sends **no**
-emergency emails for vacancies that already existed - alerts only fire for
-changes detected *after* that baseline.
-
-The database path defaults to `tracker.db` in the project root; override
-with `TRACKER_DB_PATH`. Config path defaults to `config.yaml`; override with
-`TRACKER_CONFIG`.
-
-## Run tests
+Run the tests:
 
 ```bash
 python -m unittest discover -s tests
 ```
 
-55 tests, all offline (fixtures + mocked HTTP, no live requests). `pytest`
-also works if you have it installed (`pytest tests/`) - the tests are plain
-`unittest.TestCase`s, which pytest runs natively.
+## Deploying on GitHub Actions
 
-## GitHub Actions (automatic daily run)
+`.github/workflows/daily_tracker.yml` runs daily and can be triggered by hand
+from the Actions tab, with a mode picker (`daily`, `weekly`, `test-email`). Add
+the six `EMAIL_*` values as repository secrets.
 
-`.github/workflows/daily_tracker.yml` runs every day at 07:00 UTC (and via
-"Run workflow" in the Actions tab). Add these **repository secrets**
-(Settings → Secrets and variables → Actions → New repository secret):
+Actions runners are ephemeral, so the workflow commits the updated `tracker.db`
+back to the repo after each run. That's the simplest reliable option for a
+single-user project. The trade-off is one small commit per day; moving to
+Postgres/Supabase would remove that.
 
-```
-EMAIL_HOST
-EMAIL_PORT
-EMAIL_USERNAME
-EMAIL_PASSWORD
-EMAIL_FROM
-EMAIL_TO
-```
+## Customising
 
-The workflow needs `contents: write` permission (already set) so it can
-commit the updated `tracker.db` back to the repo after each run - see
-**Known limitations** for why, and the tradeoff.
+- **Interests, London terms, entry year, alert threshold:** edit `config.yaml`.
+- **Scoring weights:** edit `score_vacancy` in `app/scoring.py`.
+- **A new website:** add a module under `app/sources/` with
+  `fetch(config) -> list[Vacancy]` and register it in `SOURCE_MODULES` in
+  `app/main.py`.
+- **A new employer:** if their careers page publishes `JobPosting` JSON-LD, add
+  it to `employers_seed` in `config.yaml`. No code needed.
 
-## Adding another website (source)
+## Things I learned from running it on the real sites
 
-Every source is a module under `app/sources/` with one function:
-`fetch(config: dict) -> list[Vacancy]`. Add a new file, implement `fetch`,
-and register it in `SOURCE_MODULES` in `app/main.py`. Reuse `app.http_client.get`
-for rate-limited, robots.txt-respecting requests. If the site exposes an
-API/feed, prefer it over HTML scraping.
+The first version passed its tests and found nothing at all. Running it against
+live sites showed why:
 
-## Adding another employer
-
-If the employer's careers site publishes JSON-LD `JobPosting` data (check
-page source for `<script type="application/ld+json">`), just add it to
-`employers_seed` in `config.yaml`:
-
-```yaml
-employers_seed:
-  - name: "Some Company"
-    careers_url: "https://example.com/careers/apprenticeships"
-```
-
-No code change needed. If they don't publish structured data, `app/sources/employers.py`
-will log that and return nothing for that page rather than guessing - you'd
-need a bespoke parser (a new source module) for that employer.
-
-## Changing interests / scoring
-
-- **Interests, London terms, subjects, entry year, minimum score for
-  emergency alerts**: edit `config.yaml`. No Python required.
-- **Scoring weights/logic**: edit `app/scoring.py` (`score_vacancy`). Every
-  weight is a plain `+N`/`-N` in that one function.
-
-## Security considerations
-
-- Credentials are read only from environment variables / GitHub Secrets,
-  never from `config.yaml` or hardcoded. `.gitignore` excludes `.env` and
-  logs.
-- The scraper identifies itself with a descriptive User-Agent, respects
-  `robots.txt`, rate-limits requests per host, and backs off on HTTP 429.
-  It never bypasses CAPTCHAs, logins, or anti-bot systems - a source that
-  blocks it is marked unavailable for that run, logged, and skipped.
-- The committed SQLite database contains only publicly-listed vacancy data
-  (titles, employers, URLs, dates) - no credentials or personal data beyond
-  what you configure in `EMAIL_TO`, which stays in Secrets, not the DB.
+1. **`robots.txt` was blocking everything.** Python's `urllib.robotparser`
+   fetches `robots.txt` with a generic User-Agent, which the gov.uk firewall
+   rejects with a 403, and the parser treats a 403 as "disallow everything". The
+   fix was to fetch `robots.txt` with the tool's own User-Agent.
+2. **The search is exact-phrase, not topical.** "computer science" returns 0
+   results on Find an Apprenticeship while "software" returns dozens, so the
+   search terms are short single words and the real filtering happens in the
+   scorer.
+3. **The listing URL pattern was wrong.** I had assumed
+   `/apprenticeship/reference/<id>`; the real one is `/apprenticeship/VAC<id>`.
+   Reading the raw HTML the live site returned showed it.
+4. **Inline tags split field labels from their values**, breaking date parsing,
+   so the parser reads whole `<p>` elements instead of flattening text.
+5. **GitHub can silently drop scheduled runs at the top of the hour**, which is
+   why the cron is `17 7 * * *` and not `0 7 * * *`.
 
 ## Known limitations
 
-- **UCAS** (`app/sources/ucas.py`) is a documented no-op: its search page
-  loads results client-side from a private Algolia index with no public
-  API, so it can't be reliably scraped with plain HTTP requests. Find an
-  Apprenticeship already carries the same official vacancies.
-- **Employer/university pages** only work when the page publishes schema.org
-  `JobPosting` structured data. Several career pages guessed for the seed
-  list (BT, TfL, Greenwich, Open University) returned 404s or unknown
-  structure when last checked - **verify and fix these URLs before relying
-  on them** (`config.yaml` → `employers_seed`, and `app/sources/qmul.py` →
-  `UNIVERSITY_PAGES`). They're wired up and will silently log "no results"
-  rather than break anything if left as-is. QMUL's URL has been checked
-  and corrected (`qmul.ac.uk/degreeapprenticeships/`), but it's structurally
-  a course-info page, not a vacancy feed - there's nothing there to scrape
-  regardless of URL. QMUL doesn't publish its own vacancies; its partner
-  employers do, elsewhere, with QMUL named only as training provider. That
-  name isn't exposed in findapprenticeship's search results (confirmed
-  live - a "queen mary" search there returns 0 results), so the practical
-  way this project surfaces QMUL-partnered roles is `apprentifinder.py`
-  below, whose feed includes a training-provider field per listing.
-- **apprentifinder.co.uk**, added to widen coverage beyond whatever an
-  employer chooses to advertise on the government site. Its `/browse` page
-  is a client-rendered app like UCAS, but (confirmed live, 2026-09-21) it
-  calls a plain, unauthenticated JSON endpoint - `/api/opportunities` - to
-  populate itself, which `app/sources/apprentifinder.py` reads instead of
-  the HTML; `robots.txt` there is `Allow: /` for everything. That endpoint
-  doesn't include a direct employer "apply" link, so each vacancy's `url`
-  points at ApprentiFinder's own detail view instead, which does show a
-  real "Apply on company site" link when opened.
-- **findapprenticeship.service.gov.uk has no public read API.** DfE's
-  Recruitment/Display Advert APIs exist but require registering as an
-  employer/training provider, or self-registering for a Display-Advert-only
-  key, neither of which this tool can do on your behalf. The scraper in
-  `app/sources/findapprenticeship.py` uses the public search HTML instead,
-  anchored on the stable `/apprenticeship/VAC<id>` URL pattern rather than
-  CSS classes so it degrades gracefully (skips one bad listing, never
-  crashes) if the site's markup changes. **Verified against the live site**
-  (not just a fixture): correctly pulls title, employer, location, level,
-  wage, dates and a real vacancy count (149 stored on a live test run).
-  The site's own search box does exact-phrase matching, not topic search -
-  `config.yaml`'s `subjects` list is deliberately short, broad, single
-  words for that reason (see the comment there).
-- **SQLite-in-repo persistence**: GitHub Actions runners are ephemeral, so
-  the workflow commits `tracker.db` back to the repo after every run. This
-  is the simplest reliable option for a first version, but it means every
-  daily run adds a commit, and concurrent runs could conflict (unlikely at
-  once-a-day). If that becomes a problem, swap `TRACKER_DB_PATH` for a
-  Postgres/Supabase connection in `app/database.py` (schema is plain SQL,
-  porting is mostly changing `sqlite3.connect` to a `psycopg2`/Supabase
-  client and `?` placeholders to `%s`) and drop the "commit database" step
-  from the workflow.
-- **Deduplication** is fuzzy-matched on (employer, normalised title, start
-  year) using `difflib` - good enough for a few hundred vacancies/day, but
-  it can occasionally merge two genuinely different roles with near-identical
-  titles at the same employer, or miss a match if the same role has a
-  substantially reworded title across two sources. Check `also_seen_on` in
-  a vacancy's `raw_source_data` if a merge looks wrong.
+- **UCAS** has no public API and is not scraped.
+- **Some employer/university seed URLs are dead or bot-blocked** (BT, Greenwich,
+  Open University, TfL). They're logged as unavailable and skipped.
+- **QMUL's site is course information, not a vacancy feed**, so there is
+  nothing to scrape there. QMUL-partnered roles are picked up through
+  ApprentiFinder's training-provider field instead.
+- **Find an Apprenticeship has no public read API**, so this scrapes its public
+  search HTML. It's built to skip a bad listing rather than crash, but a site
+  redesign could still break parsing.
+- **Deduplication** is fuzzy (employer, normalised title, start year via
+  `difflib`). It can occasionally merge two different roles with near-identical
+  titles.
+- **The database lives in the repo.** See the deployment note above.
+
+## How this was built
+
+I built this with Claude (Anthropic's AI assistant), and I want to be clear
+about who did what.
+
+- **What I did:** defined the problem and requirements (what to track, the
+  London / Level 6 / 2027 criteria, the scoring weights and how my interests
+  should affect ranking); chose which sources to add (ApprentiFinder, QMUL);
+  set up the GitHub repository, secrets and Actions schedule; ran it against
+  the live sites on my own machine; and fed back the logs that exposed the bugs
+  above.
+- **What Claude did:** wrote most of the Python code, the tests and the first
+  draft of this documentation, working from my spec.
+
+The commit history reflects this, with Claude credited as co-author.

@@ -27,7 +27,7 @@ class TestFindApprenticeshipParsing(unittest.TestCase):
         self.assertEqual(v.level, 6)
         self.assertEqual(v.salary, "£24,000 a year")
         self.assertEqual(v.start_date, "1 September 2027")
-        self.assertEqual(v.application_deadline, "19 October 2026")
+        self.assertEqual(v.application_deadline, "19 October 2099")
         self.assertEqual(v.source_id, "VAC2000099001")
         self.assertEqual(v.url, f"{BASE_URL}/apprenticeship/VAC2000099001")
 
@@ -75,7 +75,7 @@ class TestEmployerJsonLdParsing(unittest.TestCase):
         self.assertEqual(v.title, "Cyber Security Degree Apprentice")
         self.assertEqual(v.employer, "SecureGov Ltd")
         self.assertIn("London", v.location)
-        self.assertEqual(v.application_deadline, "2027-01-15")
+        self.assertEqual(v.application_deadline, "2099-01-15")
         self.assertEqual(v.status, VacancyStatus.OPEN)
         self.assertNotIn("<p>", v.description)  # HTML stripped from JSON-LD description
 

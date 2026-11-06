@@ -2,7 +2,13 @@ __pycache__/
 *.pyc
 .env
 *.log
-tracker_log.txt
 .pytest_cache/
 venv/
 .venv/
+
+# local-only helper scripts and their output (not part of the project)
+*.bat
+tracker_log.txt
+*_log.txt
+diagnose_*
+commit_msg*.txt
